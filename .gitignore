@@ -1,3 +1,4 @@
 journal-agent
 config.yaml
 *.sh
+.idea
