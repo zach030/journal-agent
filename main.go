@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"os"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 type Config struct {
-	NoteDir  string `json:"note_dir" yaml:"note_dir"`
-	APIKey   string `json:"api_key" yaml:"api_key"`
-	APIBase  string `json:"api_base" yaml:"api_base"`
-	NotionSK string `json:"notion_sk" yaml:"notion_sk"`
-	PageID   string `json:"page_id" yaml:"page_id"`
+	NoteDir   string `json:"note_dir" yaml:"note_dir"`
+	APIKey    string `json:"api_key" yaml:"api_key"`
+	APIBase   string `json:"api_base" yaml:"api_base"`
+	NotionSK  string `json:"notion_sk" yaml:"notion_sk"`
+	PageID    string `json:"page_id" yaml:"page_id"`
+	RawPageID string `json:"raw_page_id" yaml:"raw_page_id"`
 }
 
 func LoadConfig(cfg interface{}, filename string) error {
@@ -41,7 +43,12 @@ func main() {
 		log.Errorf("review error: %v", err)
 		return
 	}
-	notion := NewNotionAPI(config.NotionSK, config.PageID)
+	notion := NewNotionAPI(config.NotionSK, config.PageID, config.RawPageID)
+	err = notion.InsertJournal(context.Background(), agent.notes)
+	if err != nil {
+		log.Errorf("insert journal error: %v", err)
+		return
+	}
 	err = notion.InsertNote(context.Background(), review)
 	if err != nil {
 		log.Errorf("insert note error: %v", err)

@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"strings"
-	"time"
 )
 
 const prompt = `你是一位博学多识，了解科技与心理的专家，我会给你我最近一段时间记录的思考和笔记内容（用json数组组成），我希望你可以基于这些内容，帮我做几件事：
@@ -29,7 +30,7 @@ type FlashNote struct {
 func LoadFlashNote(dir string) []FlashNote {
 	notes := make([]FlashNote, 0)
 	now := time.Now()
-	earlestTime := now.AddDate(0, 0, -7)
+	earlestTime := now.AddDate(0, 0, -8)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		log.Errorf("read dir error: %v", err)
@@ -67,7 +68,9 @@ type JournalAgent struct {
 
 func NewJournalAgent(apiKey, apiBase, noteDir string) *JournalAgent {
 	cfg := openai.DefaultConfig(apiKey)
-	cfg.BaseURL = apiBase
+	if apiBase != "" {
+		cfg.BaseURL = apiBase
+	}
 	client := openai.NewClientWithConfig(cfg)
 	return &JournalAgent{client: client, notes: LoadFlashNote(noteDir)}
 }

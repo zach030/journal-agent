@@ -9,14 +9,16 @@ import (
 )
 
 type Notion struct {
-	client *notionapi.Client
-	PageID string
+	client    *notionapi.Client
+	PageID    string
+	RawPageID string
 }
 
-func NewNotionAPI(sk, pid string) *Notion {
+func NewNotionAPI(sk, pid, rpid string) *Notion {
 	return &Notion{
-		client: notionapi.NewClient(notionapi.Token(sk)),
-		PageID: pid,
+		client:    notionapi.NewClient(notionapi.Token(sk)),
+		PageID:    pid,
+		RawPageID: rpid,
 	}
 }
 
@@ -79,8 +81,74 @@ func (n *Notion) InsertNote(ctx context.Context, review string) error {
 	return nil
 }
 
+func (n *Notion) noteReq(note FlashNote) *notionapi.PageCreateRequest {
+	var emoji notionapi.Emoji = "📔"
+	date := notionapi.Date(note.Mtime)
+	return &notionapi.PageCreateRequest{
+		Icon: &notionapi.Icon{
+			Type:  "emoji",
+			Emoji: &emoji,
+		},
+		Parent: notionapi.Parent{
+			Type:       notionapi.ParentTypeDatabaseID,
+			DatabaseID: notionapi.DatabaseID(n.RawPageID),
+		},
+		Properties: notionapi.Properties{
+			"Name": notionapi.TitleProperty{
+				ID:   "title",
+				Type: notionapi.PropertyTypeTitle,
+				Title: []notionapi.RichText{
+					{Text: &notionapi.Text{Content: note.Title}},
+				},
+			},
+			"Date": notionapi.DateProperty{
+				Type: notionapi.PropertyTypeDate,
+				Date: &notionapi.DateObject{Start: &date},
+			},
+		},
+		Children: []notionapi.Block{
+			notionapi.ParagraphBlock{
+				BasicBlock: notionapi.BasicBlock{
+					Object: notionapi.ObjectTypeBlock,
+					Type:   notionapi.BlockTypeParagraph,
+				},
+				Paragraph: notionapi.Paragraph{
+					RichText: []notionapi.RichText{
+						{
+							Text: &notionapi.Text{
+								Content: note.Content,
+							},
+						},
+					},
+					Children: nil,
+				},
+			},
+		},
+	}
+}
+
+func (n *Notion) InsertJournal(ctx context.Context, notes []FlashNote) error {
+	for _, note := range notes {
+		_, err := n.client.Page.Create(ctx, n.noteReq(note))
+		if err != nil {
+			log.Errorf("create page error: %v", err)
+			continue
+		}
+	}
+	return nil
+}
+
 func (n *Notion) GetPage(pageID string) {
 	p, err := n.client.Page.Get(context.Background(), notionapi.PageID(pageID))
+	if err != nil {
+		log.Errorf("get page error: %v", err)
+		return
+	}
+	log.Infof("page: %v", p)
+}
+
+func (n *Notion) GetDatabase(did string) {
+	p, err := n.client.Database.Query(context.Background(), notionapi.DatabaseID(did), &notionapi.DatabaseQueryRequest{})
 	if err != nil {
 		log.Errorf("get page error: %v", err)
 		return
