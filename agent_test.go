@@ -5,7 +5,7 @@ import (
 )
 
 func TestAgent(t *testing.T) {
-	agent := NewJournalAgent("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", "", "/Users/zach/Documents/flashnotes/iCloud/flashnotes")
+	agent := NewJournalAgent("notion-sk", "", "path")
 	review, err := agent.NotesReview()
 	if err != nil {
 		t.Fatal(err)
